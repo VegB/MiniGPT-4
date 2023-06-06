@@ -1,5 +1,7 @@
 """
-python inference.py --gpu-id ?
+python inference.py --gpu-id ? \
+                    --input_csv ./input_csv/visit_bench_single_image.csv \
+                    --output_dir ./output_csv/visit_bench_single_image
 """
 
 import argparse
@@ -8,6 +10,7 @@ import random
 import urllib.request
 from urllib.parse import urlparse
 from tqdm import tqdm
+import json
 
 import csv
 from PIL import Image
@@ -43,7 +46,7 @@ def parse_args():
     parser.add_argument('--num_beams', type=int, default=1)
     parser.add_argument('--temperature', type=float, default=1.0)
     parser.add_argument('--input_csv', type=str, default='./input_csv/visit_instructions_700.csv')
-    parser.add_argument('--output_csv', type=str, default='./output_csv/minigpt4.csv')
+    parser.add_argument('--output_dir', type=str, default='./output_csv/')
     parser.add_argument('--model_name', type=str, default='MiniGPT-4')
     parser.add_argument('--verbose', action='store_true', default=False)
     args = parser.parse_args()
@@ -90,13 +93,19 @@ def setup_seeds(config):
 
 if __name__ == '__main__':
 
+    args = parse_args()
+    cfg = Config(args)
+
+    # check output directory
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
+    args.output_csv = os.path.join(args.output_dir, f'{args.model_name.lower()}.csv')
+
     # ========================================
     #             Model Initialization
     # ========================================
 
     print('Initializing Chat')
-    args = parse_args()
-    cfg = Config(args)
 
     model_config = cfg.model_cfg
     model_config.device_8bit = args.gpu_id
@@ -119,7 +128,12 @@ if __name__ == '__main__':
         if args.verbose:
             print(row)
 
-        image_url_list = list(eval(row['images']))
+        if 'Input.image_url' in row.keys():
+            image_url_list = [row['Input.image_url']]
+        elif 'image' in row.keys():
+            image_url_list = [row['image']]
+        else:
+            image_url_list = list(eval(row['images']))
 
         if len(image_url_list) > 1:
             llm_prediction = '[SKIPPED]'
@@ -165,6 +179,9 @@ if __name__ == '__main__':
 
         row[prediction_fieldname] = llm_prediction
         output_data_list.append(row)
+
+        with open('tmp.json', 'w') as f:
+            json.dump(output_data_list, f, indent=2)
 
     # Write to output csv file
     output_file = args.output_csv
