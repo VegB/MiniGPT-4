@@ -13,7 +13,7 @@ model:
   num_query_token: 32
 
   # Vicuna
-  llama_model: "/share/edc/home/wanrongzhu/MiniGPT-4/vicuna_weights/"
+  llama_model: "/share/edc/home/wanrongzhu/MiniGPT-4/vicuna_weights/13B"
 
   # generation configs
   prompt: ""
